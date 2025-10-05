@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>My Bedrock Agent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { margin: 0; background:#0b0e14; color:#e6e6e6; }
+    .wrap { max-width: 760px; margin: 40px auto; padding: 0 16px; }
+    .card { background:#111827; border:1px solid #1f2937; border-radius:16px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+    h1 { margin:0 0 12px; font-size: 20px; }
+    .row { display:flex; gap:8px; margin-top: 8px; }
+    input, button { padding:12px; border-radius:10px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; }
+    input { flex: 1; outline: none; }
+    button { cursor: pointer; }
+    .log { white-space: pre-wrap; margin-top: 12px; background:#0b1220; border:1px solid #1f2937; border-radius:10px; padding:12px; min-height: 120px; }
+    .pill { font-size:12px; color:#94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Update Health Tracker</h1>
+      <div class="pill">Proxy: <code>http://localhost:3000/ask</code></div>
+      <div class="row">
+        <input id="q" placeholder='Type entry here...' />
+        <button id="go">Submit</button>
+      </div>
+      <div id="out" class="log"></div>
+    </div>
+  </div>
+
+<script>
+  const $q = document.getElementById("q");
+  const $go = document.getElementById("go");
+  const $out = document.getElementById("out");
+
+  // 🧠 Session management
+  let SESSION_ID =
+    localStorage.getItem("bedrockSessionId") ||
+    (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+  localStorage.setItem("bedrockSessionId", SESSION_ID);
+
+  // ── Build and attach the reset button dynamically ───────────────────
+  const resetBtn = document.createElement("button");
+  resetBtn.textContent = "🔄 Reset Session";
+  resetBtn.style.marginTop = "10px";
+  resetBtn.onclick = resetSession;
+  $out.parentElement.appendChild(resetBtn);
+
+  // ── Helper: append a line to the log area ───────────────────────────
+  function appendLine(text, type = "bot") {
+    const prefix =
+      type === "user" ? "🧑‍💬 " :
+      type === "tool" ? "🔧 " :
+      type === "sys"  ? "ℹ️ " : "";
+    $out.textContent += `${prefix}${text}\n\n`;
+    $out.scrollTop = $out.scrollHeight;
+  }
+
+  // ── Send message to proxy and show reply ────────────────────────────
+  async function askAgent() {
+    const inputText = $q.value.trim();
+    if (!inputText) return;
+
+    appendLine(inputText, "user");
+    $q.value = "";
+    $q.focus();
+    appendLine("⏳ Sending…", "sys");
+
+    try {
+      const r = await fetch("http://localhost:3000/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inputText, sessionId: SESSION_ID })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || r.statusText);
+
+      appendLine(data.text || "(no text returned)", "bot");
+      if (data.toolSummary) appendLine(data.toolSummary, "tool");
+    } catch (e) {
+      appendLine("❌ Error: " + e.message, "sys");
+    }
+  }
+
+  // ── Reset session & clear chat ──────────────────────────────────────
+  function resetSession() {
+    $out.textContent = "";
+    SESSION_ID = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    localStorage.setItem("bedrockSessionId", SESSION_ID);
+    appendLine("Session reset. New ID: " + SESSION_ID, "sys");
+    $q.value = "";
+    $q.focus();
+  }
+
+  // ── Hook up UI events ───────────────────────────────────────────────
+  $go.onclick = askAgent;
+  $q.addEventListener("keydown", e => {
+    if (e.key === "Enter") askAgent();
+  });
+
+  // ── Initial note so you can see which session you're on ─────────────
+  appendLine("Session started: " + SESSION_ID, "sys");
+</script>
+
+
+</body>
+</html>
