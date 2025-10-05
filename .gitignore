@@ -3,3 +3,9 @@
 .DS_Store
 .parcel-cache/
 dist/
+# Build artifacts
+deploy/
+*.zip
+
+# Secrets
+.env
