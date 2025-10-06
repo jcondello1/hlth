@@ -22,7 +22,7 @@
   <div class="wrap">
     <div class="card">
       <h1>Update Health Tracker</h1>
-      <div class="pill">Proxy: <code>http://localhost:3000/ask</code></div>
+      <!-- <div class="pill">Proxy: <code>http://localhost:3000/ask</code></div> -->
       <div class="row">
         <input id="q" placeholder='Type entry here...' />
         <button id="go">Submit</button>
@@ -70,7 +70,7 @@
     appendLine("⏳ Sending…", "sys");
 
     try {
-      const r = await fetch("http://localhost:3000/ask", {
+      const r = await fetch("/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ inputText, sessionId: SESSION_ID })

@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { BedrockAgentRuntimeClient, InvokeAgentCommand } from "@aws-sdk/client-bedrock-agent-runtime";
-
+import { fromIni } from "@aws-sdk/credential-providers";
 
 import { webcrypto as crypto } from "crypto";
 if (!globalThis.crypto) globalThis.crypto = crypto;
@@ -36,7 +36,17 @@ if (!AWS_REGION || !AGENT_ID || !AGENT_ALIAS_ID) {
   process.exit(1);
 }
 
-const client = new BedrockAgentRuntimeClient({ region: AWS_REGION });
+// Use instance role in production (Elastic Beanstalk), local profile in dev
+const credentials =
+  process.env.NODE_ENV === "production"
+    ? undefined
+    : fromIni({ profile: process.env.AWS_PROFILE || "root" });
+
+const client = new BedrockAgentRuntimeClient({
+  region: AWS_REGION,
+  credentials, // undefined in prod = use instance role
+});
+
 
 // Robust stream reader for Bedrock Agent Runtime event streams
 async function readStreamToText(stream) {
@@ -106,7 +116,7 @@ app.post("/ask", async (req, res) => {
     const inputText = String(req.body?.inputText ?? "").trim();
     if (!inputText) return res.status(400).json({ error: "Missing inputText" });
 
-    const client = new BedrockAgentRuntimeClient({ region: process.env.AWS_REGION || "us-east-1" });
+    // const client = new BedrockAgentRuntimeClient({ region: process.env.AWS_REGION || "us-east-1" });
     const cmd = new InvokeAgentCommand({
       agentId: process.env.AGENT_ID,
       agentAliasId: process.env.AGENT_ALIAS_ID,
